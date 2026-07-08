@@ -2,7 +2,7 @@
 
 > 一份基于**当前代码与文档真实状态**（`docs/README_CN.md`、`docs/architecture_CN.md`、`config.yaml`、`core/loop.py`、`api.py`）的详细使用指南。
 >
-> ⚠️ 提示：项目根的 `CLAUDE.md` 里那套"AI Guide"描述的是**较早版本**（默认 Anthropic/OpenAI、8 个 skill、`--gpu` 走 skill）。**当前实际默认 provider 已经是智谱 GLM**，需要 `GLM_CODING_PLAN_API_KEY`，且 skill 数量也更多。以下以代码实际为准。
+> 默认 LLM provider 为**智谱 GLM**（`glm_token_plan`），需要 `GLM_CODING_PLAN_API_KEY`；也支持 Anthropic / OpenAI / Qwen / 阿里 Token Plan，改 `config.yaml` 的 `provider` 即可切换。更全面的 AI 协作指南见项目根 [`CLAUDE.md`](CLAUDE.md)。
 
 ---
 
@@ -47,7 +47,7 @@ echo 'export GLM_CODING_PLAN_API_KEY="your-key-here"' >> ~/.bashrc && source ~/.
 ```bash
 pip install -r requirements.txt          # 依赖：anthropic / openai / zai-sdk / pyyaml
 python install.py                        # 安装 Claude Code skills（/auto-experiment 等）
-python -m core.loop --check 2>/dev/null || python api.py --help   # 验证可运行
+python api.py --help   # 验证可运行（应列出 status/run/start/stop/lessons 子命令）
 ```
 
 ---
@@ -112,9 +112,21 @@ agent:
 
 ---
 
-## 五、启动（三种方式，任选其一）
+## 五、启动
 
-### 方式 A：友好 CLI（推荐入门）—— `api.py`
+先理解一个**关键区别**——同一套研究方法论有两条执行路径：
+
+| | python 方式（方式 A / B） | skill 方式（方式 C） |
+|---|---|---|
+| 循环驱动者 | 独立 Python 进程（`core/loop.py`） | Claude Code 会话 |
+| LLM 大脑 | 调 API（GLM/Claude，用 API key） | Claude Code 自己（用 CC 额度） |
+| 硬约束 / 反欺骗 | **代码强制**（12 层 VERIFY、方法论门、constraint_engine），LLM 无法绕过 | 退化为 SKILL.md 文字提示，靠 Claude 自觉 |
+| 关掉终端/会话 | **继续跑**（nohup 独立进程） | 循环停止（当前这轮训练会跑完） |
+| 适合场景 | 长期 24/7 无人值守、严肃实验 | 边盯边调、快速验证 |
+
+> 一句话：想关终端长期跑 → 用 python 方式；想在 Claude Code 里交互式驱动 → 用 skill 方式。两者都会把训练脚本（`train.py`）真实启动到 GPU 上，区别只在"谁来当大脑、谁来驱动循环"。
+
+### 方式 A：友好 CLI（python 方式，推荐入门）—— `api.py`
 
 `api.py` 是封装好的命令行入口：
 
@@ -122,7 +134,7 @@ agent:
 # 跑一个周期（同步，便于先看效果）
 python api.py run --project ~/my_experiment --cycles 1
 
-# 后台 daemon 常驻（7×24）
+# 后台 daemon 常驻（7×24，关终端继续跑）
 python api.py start --project ~/my_experiment --gpu 0 --max-cycles -1
 
 # 查看状态
@@ -132,7 +144,7 @@ python api.py status --project ~/my_experiment
 python api.py lessons --project ~/my_experiment --severity HIGH
 ```
 
-### 方式 B：直接跑核心循环
+### 方式 B：直接跑核心循环（python 方式）
 
 ```bash
 nohup python -m core.loop \
@@ -142,17 +154,26 @@ nohup python -m core.loop \
   > loop.log 2>&1 &
 ```
 
-关闭终端也会继续跑（nohup）。
+独立进程，关闭终端也会继续跑（nohup）。
 
-### 方式 C：在 Claude Code 里用 skill（最省心）
+### 方式 C：在 Claude Code 里用 skill（skill 方式）
 
-仓库装好后会注册一批 skill（`.claude/skills/`），在 Claude Code 对话里直接：
+**前置**：在项目目录里用 Claude Code 时 skill 已自动识别；想全局可用（任何项目都能用）则跑：
+
+```bash
+python install.py --claude-code   # 装到 ~/.claude/commands/
+```
+
+在 Claude Code 对话里：
 
 ```
 /auto-experiment --project ~/my_experiment --gpu 0
+/auto-experiment --project . --max-cycles 5
 ```
 
-启动后你可以关掉终端——训练通过 nohup 在后台继续，随时回来查。
+参数：`--project <路径>` / `--gpu <id>` / `--max-cycles <n>`（不写 = 无限）。
+
+Claude 会按 `skills/auto-experiment/SKILL.md` 剧本执行 THINK→EXECUTE→REFLECT：自己读 brief、写代码、用 `nohup` 启动训练、`tail` 日志、更新 memory。**训练进程会被真实启动到 GPU**，但**循环由 Claude Code 会话驱动**——所以**关掉会话循环就停**（当前这轮 nohup 训练仍会跑完）。要 24/7 无人值守，请用方式 A/B。
 
 ---
 
@@ -174,8 +195,8 @@ nvidia-smi
 | 层 | 文件 | 特点 |
 |---|---|---|
 | Tier 1 | `PROJECT_BRIEF.md` | 冻结，人工写，<3000 字符 |
-| Tier 2 | `workspace/MEMORY_LOG.md` | 滚动，LLM 每周期读，~5000 字符常量 |
-| Tier 3 | `workspace/experiment_history.db` | SQLite 全历史，含 8 张表 |
+| Tier 2 | `workspace/MEMORY_LOG.md` | 滚动，LLM 每周期读，上限 ~4000 字符 |
+| Tier 3 | `workspace/experiment_history.db` | SQLite 全历史（experiments / memory_entries / causal_chain 等） |
 
 想看进度可视化，可在 `config.yaml` 中开启 Obsidian 同步（自动生成 Dashboard.md + 每日笔记）。
 
@@ -217,6 +238,8 @@ python -m core.loop --project ~/my_experiment --directive "试 label smoothing 0
 - **方法论门 G1–G4**：可证伪性、对照覆盖、死端签名、规格符合
 - **dead_end 闭环**：被证伪的方法记录进 `memory_entries`，重试 5 次自动变 `forbidden` 硬阻断
 - **崩溃可恢复**：周期计数器每周期开始即存盘，`state.json` 原子写入
+
+> ⚠️ **以上硬约束是 python 方式（`core/loop.py`）专属**——Python 代码强制执行，LLM 无法绕过。**skill 方式**（方式 C）下这些大多**退化为 `SKILL.md` 的文字提示**（靠 Claude 自觉，无代码强制），记忆也只有两层（无 SQLite 全历史、无 `query_memory`）。两者是"同一方法论的两种实现"，**不是等价物**——要严肃实验 / 防自欺用 python 方式，快速验证 skill 方式够用。
 
 ### Provider 故障转移
 GLM 主用 → Ali 兜底，配额耗尽自动冷却切走（`config.yaml` 注释有说明）。
