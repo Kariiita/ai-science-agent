@@ -1396,3 +1396,51 @@ class ResearchLoop(DomainKnowledgeMixin):
     # Domain knowledge methods inherited from DomainKnowledgeMixin (see domain_knowledge.py)
     # Includes: _build_domain_knowledge, _build_cross_experiment_insights
 
+
+def main():
+    """CLI entry point for `python -m core.loop`.
+
+    Usage:
+        python -m core.loop --project /path/to/project --gpu 0 --max-cycles 20
+        nohup python -m core.loop --project . --gpu 0 > loop.log 2>&1 &
+    """
+    import argparse
+    import yaml
+
+    parser = argparse.ArgumentParser(
+        description="AutoResearcher autonomous experiment loop (THINK -> EXECUTE -> VERIFY -> REFLECT)"
+    )
+    parser.add_argument("--project", required=True,
+                        help="Project directory (must contain PROJECT_BRIEF.md)")
+    parser.add_argument("--gpu", default=None,
+                        help="GPU id(s), e.g. 0 or 0,1 (sets CUDA_VISIBLE_DEVICES for training)")
+    parser.add_argument("--max-cycles", type=int, default=None,
+                        help="Max cycles (-1 = unlimited). Overrides config agent.max_cycles.")
+    parser.add_argument("--directive", default="",
+                        help="One-shot directive injected into the next THINK phase")
+    args = parser.parse_args()
+
+    project_dir = Path(args.project).resolve()
+    if not (project_dir / "PROJECT_BRIEF.md").exists():
+        raise SystemExit(f"PROJECT_BRIEF.md not found in {project_dir}")
+
+    if args.gpu is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+
+    # Load config from <project>/config.yaml (UTF-8 explicit — Windows safe,
+    # avoids GBK UnicodeDecodeError when config contains non-ASCII comments)
+    config = {}
+    config_path = project_dir / "config.yaml"
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    if args.max_cycles is not None:
+        config.setdefault("agent", {})["max_cycles"] = args.max_cycles
+
+    loop = ResearchLoop(config=config, project_dir=str(project_dir))
+    loop.run(directive=args.directive)
+
+
+if __name__ == "__main__":
+    main()
+
