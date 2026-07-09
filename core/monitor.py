@@ -79,7 +79,7 @@ class ExperimentMonitor:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(log_path, "w") as log_f:
+        with open(log_path, "w", encoding="utf-8") as log_f:
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -259,7 +259,7 @@ class ExperimentMonitor:
         """Read last N lines of a file (zero cost, memory-efficient)."""
         from collections import deque
         try:
-            with open(filepath, "r") as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 return list(deque(f, maxlen=lines))
         except Exception:
             return []

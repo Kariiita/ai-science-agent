@@ -96,7 +96,7 @@ class MemoryManager:
         manifest_path = self.project_dir / "DATASET_MANIFEST.json"
         if manifest_path.exists():
             try:
-                manifest = json.loads(manifest_path.read_text())
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 domains = set()
                 for ds_info in manifest.get("datasets", {}).values():
                     ds_type = ds_info.get("type", "")
@@ -720,14 +720,14 @@ CREATE INDEX IF NOT EXISTS idx_cycle ON experiments(cycle);
     def get_brief(self) -> str:
         """Return the frozen project brief (Tier 1)."""
         if self.brief_path.exists():
-            content = self.brief_path.read_text()
+            content = self.brief_path.read_text(encoding="utf-8", errors="replace")
             return content[: self.brief_max]
         return ""
 
     def get_log(self) -> str:
         """Return the rolling memory log (Tier 2)."""
         if self.log_path.exists():
-            return self.log_path.read_text()
+            return self.log_path.read_text(encoding="utf-8", errors="replace")
         return ""
 
     def log_structured_result(self, cycle: int, metric_key: str,
@@ -981,7 +981,7 @@ CREATE INDEX IF NOT EXISTS idx_cycle ON experiments(cycle);
         content = "# Memory Log\n\n## Key Results\n\n## Dead Ends\n\n## Active Problems\n\n## Recent Decisions\n"
         # Atomic write to prevent corruption on crash
         tmp_path = self.log_path.with_suffix(".tmp")
-        tmp_path.write_text(content)
+        tmp_path.write_text(content, encoding="utf-8")
         tmp_path.replace(self.log_path)
 
     def _parse_log(self) -> dict:
@@ -1030,7 +1030,7 @@ CREATE INDEX IF NOT EXISTS idx_cycle ON experiments(cycle);
 
         # Atomic write to prevent corruption on crash
         tmp_path = self.log_path.with_suffix(".tmp")
-        tmp_path.write_text(content)
+        tmp_path.write_text(content, encoding="utf-8")
         tmp_path.replace(self.log_path)
 
     def _build_content(self, sections: dict) -> str:

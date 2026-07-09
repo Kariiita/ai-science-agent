@@ -663,6 +663,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 validated_cmd,
                 capture_output=True,
                 text=True,
+                errors="replace",  # Windows: cmd/dir output is GBK; under PYTHONUTF8=1 avoid UTF-8 decode crash
                 timeout=timeout,
                 shell=True,
                 cwd=str(self.workspace),
@@ -728,6 +729,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 [sys.executable, "-c", wrapped],
                 capture_output=True,
                 text=True,
+                errors="replace",  # Windows: avoid UTF-8 decode crash on localized output
                 timeout=timeout,
                 cwd=str(self.workspace),
             )
@@ -808,7 +810,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         log_path = self._resolve_workspace_path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(log_path, "w") as f:
+        with open(log_path, "w", encoding="utf-8") as f:
             proc = subprocess.Popen(
                 validated_cmd,
                 stdout=f,
@@ -836,7 +838,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         }
         manifest_path = log_path.parent / "experiment_manifest.json"
         try:
-            with open(manifest_path, "w") as mf:
+            with open(manifest_path, "w", encoding="utf-8") as mf:
                 json.dump(manifest, mf, indent=2)
         except OSError:
             logger.warning(f"Could not write experiment_manifest.json at {manifest_path}")
@@ -922,7 +924,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         if len(content) > MAX_FILE_SIZE:
             return json.dumps({"error": f"Content too large: {len(content)} bytes (max {MAX_FILE_SIZE})"})
 
-        file_path.write_text(content)
+        file_path.write_text(content, encoding="utf-8")
 
         # ── Scan for synthetic data patterns in training scripts ──
         if parts and parts[0] == "scripts" and Path(path).suffix == ".py":
@@ -951,7 +953,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         if not file_path.exists():
             return json.dumps({"error": f"File not found: {path}"})
         try:
-            content = file_path.read_text()
+            content = file_path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             return json.dumps({"error": f"File is binary, cannot read as text: {path}"})
 
@@ -987,7 +989,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         now = time.time()
         for manifest_path in outputs_dir.glob("*/experiment_manifest.json"):
             try:
-                data = json.loads(manifest_path.read_text())
+                data = json.loads(manifest_path.read_text(encoding="utf-8"))
                 cmd = data.get("command", "")
                 ts = data.get("timestamp", "")
                 # Parse timestamp and check age
@@ -1456,7 +1458,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 state_path = self.workspace / "state.json"
                 if state_path.exists():
                     try:
-                        state = json.loads(state_path.read_text())
+                        state = json.loads(state_path.read_text(encoding="utf-8"))
                         return json.dumps({"consecutive_failed_launches": state.get("consecutive_failed_launches", 0)})
                     except Exception:
                         pass
@@ -1691,7 +1693,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
             if not abs_path.exists():
                 return json.dumps({"error": f"Model file not found: {model_path}"})
 
-            content = abs_path.read_text()
+            content = abs_path.read_text(encoding="utf-8")
             import ast
             tree = ast.parse(content)
 
@@ -1782,7 +1784,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
             resolved = self._resolve_workspace_path(file_path)
             if not resolved.exists():
                 return json.dumps({"error": f"File not found: {file_path}"})
-            content = resolved.read_text()
+            content = resolved.read_text(encoding="utf-8")
         except ValueError as e:
             return json.dumps({"error": str(e)})
 

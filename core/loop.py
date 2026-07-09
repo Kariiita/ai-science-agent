@@ -653,7 +653,7 @@ class ResearchLoop(DomainKnowledgeMixin):
         constraints_path = self.project_dir / "PERSISTENT_CONSTRAINTS.md"
         if constraints_path.exists():
             try:
-                text = constraints_path.read_text().strip()
+                text = constraints_path.read_text(encoding="utf-8").strip()
                 if text:
                     context["persistent_constraints"] = text
             except Exception:
@@ -1360,7 +1360,7 @@ class ResearchLoop(DomainKnowledgeMixin):
     def _load_cycle_counter(self) -> int:
         counter_file = self.workspace / ".cycle_counter"
         if counter_file.exists():
-            return int(counter_file.read_text().strip())
+            return int(counter_file.read_text(encoding="utf-8", errors="ignore").strip().lstrip(chr(0xFEFF)).lstrip(chr(0xFFFE)))
         return 0
 
     def _save_cycle_counter(self):
@@ -1370,7 +1370,7 @@ class ResearchLoop(DomainKnowledgeMixin):
     def _load_state(self) -> dict:
         if self.state_path.exists():
             try:
-                return json.loads(self.state_path.read_text())
+                return json.loads(self.state_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 return {}
         return {}

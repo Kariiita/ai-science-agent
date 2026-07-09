@@ -132,7 +132,7 @@ class AutoResearcher:
         env = os.environ.copy()
         env["PYTHONPATH"] = str(_REPO_DIR)
 
-        self._daemon_log = open(self.project_dir / "autoresearcher.log", "a")
+        self._daemon_log = open(self.project_dir / "autoresearcher.log", "a", encoding="utf-8")
         self._daemon_process = subprocess.Popen(
             cmd,
             cwd=str(_REPO_DIR),
@@ -245,7 +245,7 @@ class AutoResearcher:
         import yaml
         config_file = self.project_dir / self.config_path
         if config_file.exists():
-            with open(config_file) as f:
+            with open(config_file, encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
 
@@ -275,7 +275,7 @@ class AutoResearcher:
         try:
             state_file = self.project_dir / "state.json"
             if state_file.exists():
-                with open(state_file) as f:
+                with open(state_file, encoding="utf-8") as f:
                     state = json.load(f)
                 pid = state.get("pid")
                 if pid:
