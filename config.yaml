@@ -15,7 +15,7 @@ goals:
   stop_on_achieved: true
 
 agent:
-  # Provider: "anthropic" | "openai" | "qwen" | "ali_token_plan" | "glm_token_plan"
+  # Provider: "anthropic" | "openai" | "qwen" | "ali_token_plan" | "glm_token_plan" | "dashscope"
   #   anthropic:      Anthropic Claude (requires ANTHROPIC_API_KEY)
   #   openai:         OpenAI Codex/GPT  (requires OPENAI_API_KEY)
   #   qwen:           Aliyun DashScope  (requires ALI_API_KEY)
@@ -26,7 +26,12 @@ agent:
   #                   NOTE: glm-5.2 returns 403 (code 1220) on standard Coding Plan
   #                   tiers as of 2026-06; using glm-5.1 as strong until authorized.
   #                   Auto-failover: if primary fails, switches to ali_token_plan
-  provider: "glm_token_plan"
+  #   dashscope:      Alibaba Cloud Bailian (DashScope) — official OpenAI-compatible channel
+  #                   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  #                   requires DASHSCOPE_API_KEY (from https://bailian.console.aliyun.com)
+  #                   strong: qwen-plus (chain: qwen-plus → qwen-max → qwen-turbo)
+  #                   fast:  qwen-turbo (chain: qwen-turbo → qwen-plus)
+  provider: "dashscope"
 
   # Model selection:
   #   - "auto" or "default": automatically pick strong/fast model based on task tier
@@ -39,6 +44,7 @@ agent:
   #   anthropic:      claude-sonnet-4-6 (fast) | claude-opus-4-6 (strongest)
   #   openai:         codex-5.3 (fast)         | gpt-5.4 (strongest)
   #   qwen:           qwen3.6-plus
+  #   dashscope:      qwen-plus (strong) | qwen-turbo (fast) | qwen-max | qwen-long
   model: "auto"
 
   max_cycles: -1                  # -1 = run forever
