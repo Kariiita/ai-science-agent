@@ -1,0 +1,30 @@
+project:
+  name: "depth_estimation_1b"
+  brief: "PROJECT_BRIEF.md"
+  workspace: "."
+
+agent:
+  provider: "dashscope"
+  model: "auto"
+  max_cycles: 3
+  max_steps_per_cycle: 2
+  cooldown_interval: 60
+
+goals:
+  metrics:
+    - key: "val_AbsRel"
+      target: 0.20
+      direction: "lower"
+  stop_on_achieved: true
+
+gpu:
+  auto_detect: true
+  reserve_last: false
+
+monitor:
+  poll_interval: 30
+  zero_llm: true
+
+experiment:
+  mandatory_dry_run: false
+  max_parallel: 1

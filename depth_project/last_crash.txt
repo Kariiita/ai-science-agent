@@ -1,0 +1,15 @@
+Cycle 1 crash:
+Traceback (most recent call last):
+  File "D:\code\ai-science-agent-team\core\loop.py", line 286, in run
+    think_result = self._think(directive)
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\ai-science-agent-team\core\loop.py", line 670, in _think
+    result = self.dispatcher.dispatch_leader(task="think", context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\code\ai-science-agent-team\core\agents.py", line 574, in dispatch_leader
+    response_text, trace = self._call_llm(
+                           ^^^^^^^^^^^^^^^
+  File "D:\code\ai-science-agent-team\core\agents.py", line 840, in _call_llm
+    raise RuntimeError(
+RuntimeError: All providers failed for provider='dashscope'. Last error: openai package not installed. Install with: pip install openai. Set a valid API key or configure a failover provider.
+
