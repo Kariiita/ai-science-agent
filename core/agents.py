@@ -284,7 +284,7 @@ TOKEN_PLAN_FAILOVER_ORDER = ["dashscope", "glm_token_plan", "ali_token_plan"]
 
 # Tasks that require the strong model (complex reasoning / planning).
 # Everything else uses the fast model.
-STRONG_MODEL_TASKS = {"think", "reflect", "idea", "researcher", "code"}
+STRONG_MODEL_TASKS = {"think", "reflect", "idea", "researcher", "code", "data", "reflection"}
 
 # Exploration-only tools that a code agent is blocked from calling once it
 # passes 60% of its turn budget (Phase 2 convergence gate). Tools NOT in this
@@ -472,6 +472,14 @@ class AgentDispatcher:
         "researcher": {
             "prompt_file": "researcher_agent.md",
             "max_turns": 30,
+        },
+        "data": {
+            "prompt_file": "data_agent.md",
+            "max_turns": 20,
+        },
+        "reflection": {
+            "prompt_file": "reflection_agent.md",
+            "max_turns": 15,
         },
     }
 

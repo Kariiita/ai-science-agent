@@ -132,6 +132,8 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 self._tool_code_review,
             ],
             "writing": [self._tool_write_file, self._tool_read_file, self._tool_list_files],
+            "data": [self._tool_write_file, self._tool_read_file, self._tool_list_files, self._tool_run_shell, self._tool_analyze_model],
+            "reflection": [self._tool_read_file, self._tool_list_files, self._tool_write_file, self._tool_query_memory],
         }
         return tool_map.get(agent_type, [])
 

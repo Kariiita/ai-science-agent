@@ -38,3 +38,6 @@ __pycache__/
 # Temp / scratch
 *.tmp
 tmp/
+
+# 本地规划文档，不入仓库
+后续改进计划.md
