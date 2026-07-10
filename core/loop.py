@@ -279,6 +279,19 @@ class ResearchLoop(DomainKnowledgeMixin):
                     # DATASET UNDERSTANDING: First cycle or when manifest missing
                     if self.cycle_count == 1:
                         logger.info("DATASET UNDERSTANDING phase — scanning data/ directory")
+                        # 6-Agent integration: dispatch Data Agent on first cycle to produce
+                        # DATA_REPORT.md + DATASET_MANIFEST.json. Non-fatal on failure.
+                        try:
+                            self.dispatcher.dispatch_worker(
+                                agent_type="data",
+                                task=("Analyze the data/ directory of this project. Write and run "
+                                      "an inspection script (e.g. scripts/_inspect_data.py), then "
+                                      "produce workspace/DATA_REPORT.md and workspace/DATASET_MANIFEST.json "
+                                      "with REAL statistics (counts, shapes, value ranges). Never fabricate."),
+                                tools=self.tools.get_tools_for("data"),
+                            )
+                        except Exception as _e:
+                            logger.warning(f"Data Agent dispatch failed (non-fatal): {_e}")
 
                     # ── ROADMAP INIT (v15): Generate research roadmap on first cycle ──
 
@@ -931,6 +944,22 @@ class ResearchLoop(DomainKnowledgeMixin):
             logger.warning(f"REFLECT LLM call failed: {e}")
             result = {"milestone": "", "decision": "Reflect failed", "dead_end": None,
                       "active_problem": None}
+
+        # 6-Agent integration: dispatch Reflection Agent to write a structured cycle
+        # reflection record (workspace/reflections/cycle_{N}.md). Supplements — does not
+        # replace — the Leader's REFLECT decision. Non-fatal on failure.
+        try:
+            self.dispatcher.dispatch_worker(
+                agent_type="reflection",
+                task=(f"Reflect on cycle {self.cycle_count}. "
+                      f"Hypothesis: {(think_result or {}).get('hypothesis', '')[:300]}. "
+                      f"Experiment result: {str(execute_result)[:800]}. "
+                      f"Write workspace/reflections/cycle_{self.cycle_count}.md following your "
+                      f"template and return the structured reflection JSON."),
+                tools=self.tools.get_tools_for("reflection"),
+            )
+        except Exception as _e:
+            logger.warning(f"Reflection Agent dispatch failed (non-fatal): {_e}")
 
         # Reform v21 root-cause fix (see docs): the ORIGINAL comment here blamed
         # REFLECT failure on "the LLM wrote prose instead of JSON". Black-box
