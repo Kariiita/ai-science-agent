@@ -207,7 +207,7 @@ class ModelAnalyzerMixin:
     def _analyze_data_feasibility(self, manifest_path: Path, analysis: dict) -> dict:
         """Check if available data can support the model complexity."""
         import json
-        manifest = json.loads(manifest_path.read_text())
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         datasets = manifest.get("datasets", {})
         total_train = 0
         total_val = 0
@@ -712,7 +712,7 @@ class ModelAnalyzerMixin:
         """
         try:
             abs_path = self._resolve_workspace_path(model_path)
-            content = abs_path.read_text()
+            content = abs_path.read_text(encoding="utf-8")
             # Look for common shape patterns in the model code
             # Pattern 1: explicit shape in __init__ or forward docstring
             m = re.search(r"input.*shape.*?(\[[\d,\s]+\])", content)
@@ -750,7 +750,7 @@ class ModelAnalyzerMixin:
         # Write probe script to workspace temp file
         probe_path = self.workspace / "_model_probe_tmp.py"
         try:
-            probe_path.write_text(probe_script)
+            probe_path.write_text(probe_script, encoding="utf-8")
 
             result = subprocess.run(
                 [sys.executable, str(probe_path)],
@@ -1131,7 +1131,7 @@ except Exception as e:
             return json.dumps({"error": f"Model file not found: {model_path}"})
 
         try:
-            source = resolved_model.read_text()
+            source = resolved_model.read_text(encoding="utf-8")
             tree = ast.parse(source)
         except Exception as e:
             return json.dumps({"error": f"Failed to parse model: {e}"})

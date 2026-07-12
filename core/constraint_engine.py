@@ -74,7 +74,7 @@ class StrategyConstraintEngine:
         rules_path = self.workspace / "STRATEGY_RULES.json"
         if rules_path.exists():
             try:
-                data = json.loads(rules_path.read_text())
+                data = json.loads(rules_path.read_text(encoding="utf-8"))
                 for rd in data.get("rules", []):
                     self._rules.append(StrategyRule(**{k: v for k, v in rd.items()
                                                         if k in StrategyRule.__dataclass_fields__}))

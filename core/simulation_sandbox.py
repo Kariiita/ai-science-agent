@@ -479,7 +479,7 @@ class SimulationSandbox:
         brief_path = self.project_dir / project_brief_path if project_brief_path else self.workspace / "PROJECT_BRIEF.md"
         if brief_path.exists():
             try:
-                brief_text = brief_path.read_text()[:2000].lower()
+                brief_text = brief_path.read_text(encoding="utf-8")[:2000].lower()
             except Exception:
                 pass
 

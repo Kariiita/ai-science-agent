@@ -38,3 +38,19 @@ __pycache__/
 # Temp / scratch
 *.tmp
 tmp/
+
+# Local dependency / cache copies inside project dirs
+**/.site-packages/
+**/.hf_cache/
+**/model_snapshots/
+**/DIRECTIVE.md
+**/PERSISTENT_CONSTRAINTS.md
+**/state.json
+**/MEMORY_LOG.md
+**/last_crash.txt
+**/.cycle_counter
+**/experiment_manifest.json
+**/STRATEGY_RULES.json
+**/analysis_output.txt
+**/diag_output.txt
+**/QWEN_*.txt

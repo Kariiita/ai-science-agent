@@ -1,0 +1,43 @@
+{
+  "bins": [
+    {
+      "range": "0\u201310m",
+      "rmse": 0.580543449596063,
+      "mean_abs_residual": 0.47632875442504885,
+      "std_residual": 0.5718218752673788
+    },
+    {
+      "range": "10\u201320m",
+      "rmse": 0.0,
+      "mean_abs_residual": 0.0,
+      "std_residual": 0.0
+    },
+    {
+      "range": "20\u201330m",
+      "rmse": 0.0,
+      "mean_abs_residual": 0.0,
+      "std_residual": 0.0
+    },
+    {
+      "range": "30+ m",
+      "rmse": 0.0,
+      "mean_abs_residual": 0.0,
+      "std_residual": 0.0
+    }
+  ],
+  "overall_metrics": {
+    "AbsRel": 0.1485958695411682,
+    "RMSE": 0.580543449596063,
+    "MAE": 0.06128535270690918,
+    "delta1": 0.8130012512207031,
+    "delta2": 0.9805656433105469,
+    "delta3": 0.9974113464355469
+  },
+  "residual_histogram": {
+    "min": -5.554357051849365,
+    "max": 3.8286936283111572,
+    "mean": 0.00440216064453125,
+    "std": 0.5805267095565796,
+    "count": 1310720
+  }
+}

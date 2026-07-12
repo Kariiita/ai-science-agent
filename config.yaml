@@ -26,7 +26,7 @@ agent:
   #                   NOTE: glm-5.2 returns 403 (code 1220) on standard Coding Plan
   #                   tiers as of 2026-06; using glm-5.1 as strong until authorized.
   #                   Auto-failover: if primary fails, switches to ali_token_plan
-  provider: "glm_token_plan"
+  provider: "dashscope"            # Alibaba Cloud Bailian (DashScope) — Qwen models
 
   # Model selection:
   #   - "auto" or "default": automatically pick strong/fast model based on task tier

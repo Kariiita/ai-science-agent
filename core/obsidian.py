@@ -88,11 +88,11 @@ class ObsidianExporter:
         )
 
         if daily_path.exists():
-            existing = daily_path.read_text().rstrip()
-            daily_path.write_text(f"{existing}\n\n{entry}\n")
+            existing = daily_path.read_text(encoding="utf-8").rstrip()
+            daily_path.write_text(f"{existing}\n\n{entry}\n", encoding="utf-8")
         else:
             header = f"# {self.project_name} — Daily Log — {time.strftime('%Y-%m-%d')}\n\n"
-            daily_path.write_text(f"{header}{entry}\n")
+            daily_path.write_text(f"{header}{entry}\n", encoding="utf-8")
 
         return {"status": "written", "path": str(daily_path)}
 
@@ -111,7 +111,7 @@ class ObsidianExporter:
     def _load_state(self) -> dict:
         if self.state_path.exists():
             try:
-                return json.loads(self.state_path.read_text())
+                return json.loads(self.state_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 return {}
         return {}
@@ -136,7 +136,7 @@ class ObsidianExporter:
     def _read_pending_directive(self) -> str:
         directive_path = self.workspace / "HUMAN_DIRECTIVE.md"
         if directive_path.exists():
-            return directive_path.read_text().strip()
+            return directive_path.read_text(encoding="utf-8").strip()
         return ""
 
     def _read_log_tail(self, log_file: str, lines: int = 8) -> str:
@@ -145,7 +145,7 @@ class ObsidianExporter:
         path = Path(log_file)
         if not path.exists():
             return ""
-        return "\n".join(path.read_text().splitlines()[-lines:])
+        return "\n".join(path.read_text(encoding="utf-8").splitlines()[-lines:])
 
     def _pid_alive(self, pid: Optional[int]) -> bool:
         if not pid:
@@ -260,7 +260,7 @@ class ObsidianExporter:
 def _load_config(project: Path, config_name: str) -> dict:
     config_path = project / config_name
     if config_path.exists():
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     return {}
 
@@ -284,7 +284,7 @@ def main():
     )
     exporter = ObsidianExporter(config=config, project_dir=project_dir)
     cycle_path = project_dir / config.get("project", {}).get("workspace", "workspace") / ".cycle_counter"
-    cycle_count = int(cycle_path.read_text().strip()) if cycle_path.exists() else 0
+    cycle_count = int(cycle_path.read_text(encoding="utf-8").strip()) if cycle_path.exists() else 0
 
     if not exporter.is_enabled():
         print("Progress export disabled. Set obsidian.enabled=true in project config.")

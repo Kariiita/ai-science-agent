@@ -2,7 +2,7 @@
 
 > 一份基于**当前代码与文档真实状态**（`docs/README_CN.md`、`docs/architecture_CN.md`、`config.yaml`、`core/loop.py`、`api.py`）的详细使用指南。
 >
-> ⚠️ 提示：项目根的 `CLAUDE.md` 里那套"AI Guide"描述的是**较早版本**（默认 Anthropic/OpenAI、8 个 skill、`--gpu` 走 skill）。**当前实际默认 provider 已经是智谱 GLM**，需要 `GLM_CODING_PLAN_API_KEY`，且 skill 数量也更多。以下以代码实际为准。
+> 默认 LLM provider 为**智谱 GLM**（`glm_token_plan`），需要 `GLM_CODING_PLAN_API_KEY`；也支持 Anthropic / OpenAI / Qwen / 阿里 Token Plan，改 `config.yaml` 的 `provider` 即可切换。更全面的 AI 协作指南见项目根 [`CLAUDE.md`](CLAUDE.md)。
 
 ---
 
@@ -47,7 +47,7 @@ echo 'export GLM_CODING_PLAN_API_KEY="your-key-here"' >> ~/.bashrc && source ~/.
 ```bash
 pip install -r requirements.txt          # 依赖：anthropic / openai / zai-sdk / pyyaml
 python install.py                        # 安装 Claude Code skills（/auto-experiment 等）
-python -m core.loop --check 2>/dev/null || python api.py --help   # 验证可运行
+python api.py --help   # 验证可运行（应列出 status/run/start/stop/lessons 子命令）
 ```
 
 ---
@@ -174,8 +174,8 @@ nvidia-smi
 | 层 | 文件 | 特点 |
 |---|---|---|
 | Tier 1 | `PROJECT_BRIEF.md` | 冻结，人工写，<3000 字符 |
-| Tier 2 | `workspace/MEMORY_LOG.md` | 滚动，LLM 每周期读，~5000 字符常量 |
-| Tier 3 | `workspace/experiment_history.db` | SQLite 全历史，含 8 张表 |
+| Tier 2 | `workspace/MEMORY_LOG.md` | 滚动，LLM 每周期读，上限 ~4000 字符 |
+| Tier 3 | `workspace/experiment_history.db` | SQLite 全历史（experiments / memory_entries / causal_chain 等） |
 
 想看进度可视化，可在 `config.yaml` 中开启 Obsidian 同步（自动生成 Dashboard.md + 每日笔记）。
 

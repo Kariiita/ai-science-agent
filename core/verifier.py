@@ -168,7 +168,7 @@ class ExperimentVerifier:
 
         for script in scripts_dir.glob("*.py"):
             try:
-                content = script.read_text()
+                content = script.read_text(encoding="utf-8")
             except Exception:
                 continue
 
@@ -274,7 +274,7 @@ class ExperimentVerifier:
                 if ds_file.name.startswith("_"):
                     continue
                 try:
-                    tree = ast.parse(ds_file.read_text())
+                    tree = ast.parse(ds_file.read_text(encoding="utf-8"))
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef):
                             for base in node.bases:
@@ -298,7 +298,7 @@ class ExperimentVerifier:
                 if mf.name.startswith("_"):
                     continue
                 try:
-                    tree = ast.parse(mf.read_text())
+                    tree = ast.parse(mf.read_text(encoding="utf-8"))
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef):
                             for base in node.bases:
@@ -344,7 +344,7 @@ class ExperimentVerifier:
             return
 
         try:
-            manifest = json.loads(manifest_path.read_text())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             datasets = manifest.get("datasets", {})
             total_scenes = 0
             for ds in (datasets.values() if isinstance(datasets, dict) else datasets):
@@ -961,7 +961,7 @@ class ExperimentVerifier:
         manifest_path = self.workspace / "DATASET_MANIFEST.json"
         if manifest_path.exists():
             try:
-                manifest = json.loads(manifest_path.read_text())
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 datasets = manifest.get("datasets", {})
                 if not datasets:
                     report.checks.append(VerifyCheck(
@@ -1205,7 +1205,7 @@ class ExperimentVerifier:
 
         for script in scripts_dir.glob("*.py"):
             try:
-                content = script.read_text()
+                content = script.read_text(encoding="utf-8")
             except Exception:
                 continue
 
@@ -1370,7 +1370,7 @@ class ExperimentVerifier:
         if log_path and log_path.exists():
             try:
                 # Read only last 50KB of log to avoid OOM on large files
-                with open(str(log_path), "r") as f:
+                with open(str(log_path), "r", encoding="utf-8") as f:
                     f.seek(0, 2)  # Seek to end
                     size = f.tell()
                     f.seek(max(0, size - 50000))  # Read last 50KB
@@ -1393,7 +1393,7 @@ class ExperimentVerifier:
         if scripts_dir.exists():
             for script in scripts_dir.glob("*.py"):
                 try:
-                    content = script.read_text()
+                    content = script.read_text(encoding="utf-8")
                     # Check if script creates model with hardcoded params that might
                     # differ from what the model class expects
                     if "num_views" in content or "num_angular" in content:
@@ -1486,7 +1486,7 @@ class ExperimentVerifier:
 
         try:
             import json
-            manifest = json.loads(manifest_path.read_text())
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             datasets = manifest.get("datasets", {})
 
             # Count validation scenes per domain group
@@ -1562,7 +1562,7 @@ class ExperimentVerifier:
         manifest_path = self.project_dir / "DATASET_MANIFEST.json"
         if manifest_path.exists():
             try:
-                manifest = json.loads(manifest_path.read_text())
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 ds_info = manifest.get("datasets", {}).get(ds_name, {})
                 ds_type = ds_info.get("type", "")
                 if ds_type:
@@ -1678,7 +1678,7 @@ class ExperimentVerifier:
                 if ds_file.name.startswith("__"):
                     continue
                 try:
-                    tree = ast.parse(ds_file.read_text())
+                    tree = ast.parse(ds_file.read_text(encoding="utf-8"))
                     for node in ast.walk(tree):
                         if isinstance(node, ast.ClassDef):
                             for base in node.bases:
@@ -1802,7 +1802,7 @@ class ExperimentVerifier:
         # Check the most recently modified model file
         model_file = model_files[0]
         try:
-            content = model_file.read_text()
+            content = model_file.read_text(encoding="utf-8")
             tree = ast.parse(content)
         except Exception as e:
             report.checks.append(VerifyCheck(
@@ -1826,7 +1826,7 @@ class ExperimentVerifier:
         """
         from .model_structure_scanner import scan_model_file, find_dead_branches
         try:
-            content = model_file.read_text()
+            content = model_file.read_text(encoding="utf-8")
             structure = scan_model_file(content)
             dead = find_dead_branches(structure)
             if dead:
@@ -2473,7 +2473,7 @@ class ExperimentVerifier:
                 # Use the most recently modified
                 latest = max(candidates, key=lambda p: p.stat().st_mtime)
                 try:
-                    data = json.loads(latest.read_text())
+                    data = json.loads(latest.read_text(encoding="utf-8"))
                     if data and isinstance(data, dict):
                         return data
                 except Exception:

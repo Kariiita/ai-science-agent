@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rln 'if __name__ == .__main__.\\\\|argparse\\\\|ArgumentParser' --include=*.py core/ api.py install.py)",
+      "Bash(ls .claude/skills/)",
+      "Bash(ls skills/)"
+    ]
+  }
+}

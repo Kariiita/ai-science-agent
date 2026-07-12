@@ -79,7 +79,7 @@ class ExperimentMonitor:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(log_path, "w") as log_f:
+        with open(log_path, "w", encoding="utf-8") as log_f:
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -132,6 +132,19 @@ class ExperimentMonitor:
                 f"last_log: {log_tail[-1] if log_tail else 'N/A'}"
             )
 
+            # Detect completion from log content (process may hang on Windows
+            # due to CUDA cleanup threads even after training finished)
+            if log_tail:
+                combined = " ".join(log_tail)
+                _DONE_MARKERS = ("Training completed!", "FINAL METRICS:",
+                                 "training complete", "All done",
+                                 "Analysis complete", "Analysis completed",
+                                 "analysis done", "Saved analysis")
+                if any(m.lower() in combined.lower() for m in _DONE_MARKERS):
+                    logger.info(f"Training completed (detected in log). PID={pid}")
+                    self._kill_process(pid)
+                    break
+
             # Hard timeout: kill process if it exceeds max allowed runtime
             if elapsed > self.max_runtime:
                 logger.warning(
@@ -180,12 +193,27 @@ class ExperimentMonitor:
         return False
 
     def _is_process_alive(self, pid: int) -> bool:
-        """Check if process is still running (zero cost)."""
-        try:
-            os.kill(pid, 0)
+        """Check if process is still running.
+
+        On Windows, os.kill(pid, 0) is unreliable - it may succeed even for
+        dead PIDs. We use ctypes OpenProcess instead.
+        """
+        import sys as _sys
+        if _sys.platform == "win32":
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if not handle:
+                return False
+            kernel32.CloseHandle(handle)
             return True
-        except OSError:
-            return False
+        else:
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                return False
 
     def _cleanup_stale_experiments(self):
         """Remove completed/failed experiments older than 24h to prevent memory leak.
@@ -206,32 +234,40 @@ class ExperimentMonitor:
     def _kill_process(self, pid: int) -> bool:
         """Force-kill a process and its entire process group.
 
-        Uses SIGTERM first, then SIGKILL to ensure ALL child processes
-        (including nohup'd training scripts) are terminated.
+        Uses os.killpg on Unix. On Windows, uses taskkill to kill
+        the process tree (os.killpg does not exist on Windows).
         """
-        # Try graceful termination of the entire process group first
-        try:
-            os.killpg(pid, signal.SIGTERM)
-            logger.info(f"Sent SIGTERM to process group PGID={pid}")
-            time.sleep(2)  # Grace period for cleanup
-        except OSError:
-            pass
-
-        # Force kill the entire process group
-        try:
-            os.killpg(pid, signal.SIGKILL)
-            logger.info(f"Sent SIGKILL to process group PGID={pid}")
-        except OSError:
-            pass
-
-        # Fallback: kill just the process
-        try:
-            os.kill(pid, signal.SIGKILL)
-            logger.info(f"Killed process PID={pid}")
-            return True
-        except OSError:
-            return False
-
+        import sys as _sys
+        if _sys.platform == "win32":
+            import subprocess as _sp
+            try:
+                _sp.run(
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    capture_output=True, timeout=10,
+                )
+                logger.info(f"Killed process tree PID={pid} (taskkill)")
+                return True
+            except Exception as e:
+                logger.warning(f"taskkill failed for PID={pid}: {e}")
+                return False
+        else:
+            try:
+                os.killpg(pid, signal.SIGTERM)
+                logger.info(f"Sent SIGTERM to process group PGID={pid}")
+                time.sleep(2)
+            except OSError:
+                pass
+            try:
+                os.killpg(pid, signal.SIGKILL)
+                logger.info(f"Sent SIGKILL to process group PGID={pid}")
+            except OSError:
+                pass
+            try:
+                os.kill(pid, signal.SIGKILL)
+                logger.info(f"Killed process PID={pid}")
+                return True
+            except OSError:
+                return False
     def _get_gpu_status(self) -> dict:
         """Get GPU utilization via nvidia-smi."""
         try:
@@ -259,7 +295,7 @@ class ExperimentMonitor:
         """Read last N lines of a file (zero cost, memory-efficient)."""
         from collections import deque
         try:
-            with open(filepath, "r") as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 return list(deque(f, maxlen=lines))
         except Exception:
             return []

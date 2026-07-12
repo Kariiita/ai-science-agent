@@ -245,6 +245,31 @@ TOKEN_PLAN_PROVIDERS = {
             "MiniMax-M2.5",         # MiniMax: reasoning, text generation
         ],
     },
+    # DashScope (Alibaba Cloud Bailian)
+    # Standard Alibaba Cloud Bailian (DashScope) endpoint, OpenAI-compatible.
+    # OFFICIAL competition-required channel: Qwen models via Bailian.
+    # Get API key from https://bailian.console.aliyun.com
+    "dashscope": {
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "env_key": "DASHSCOPE_API_KEY",
+        "strong_model": "qwen-plus",
+        "fast_model": "qwen-turbo",
+        "strong_model_chain": [
+            "qwen-plus",
+            "qwen-max",
+            "qwen-turbo",
+        ],
+        "fast_model_chain": [
+            "qwen-turbo",
+            "qwen-plus",
+        ],
+        "models": [
+            "qwen-plus",
+            "qwen-max",
+            "qwen-turbo",
+            "qwen-long",
+        ],
+    },
 }
 
 # Failover order: GLM first, ALI as backup.
@@ -255,7 +280,7 @@ TOKEN_PLAN_PROVIDERS = {
 #   Level 2 (provider-level): If ALL models in a provider's chain fail, switch to the next
 #     provider in TOKEN_PLAN_FAILOVER_ORDER and try its model chain.
 #
-TOKEN_PLAN_FAILOVER_ORDER = ["glm_token_plan", "ali_token_plan"]
+TOKEN_PLAN_FAILOVER_ORDER = ["dashscope", "glm_token_plan", "ali_token_plan"]
 
 # Tasks that require the strong model (complex reasoning / planning).
 # Everything else uses the fast model.
@@ -1672,7 +1697,7 @@ class AgentDispatcher:
         """Load agent prompt from agents/ directory."""
         prompt_path = AGENTS_DIR / filename
         if prompt_path.exists():
-            return prompt_path.read_text()
+            return prompt_path.read_text(encoding="utf-8")
         logger.warning(f"Prompt file not found: {prompt_path}")
         return f"You are the {filename.replace('.md', '')} agent."
 
@@ -1708,7 +1733,7 @@ class AgentDispatcher:
         dataset_init = workspace / "datasets" / "__init__.py"
         if dataset_init.exists():
             try:
-                content = dataset_init.read_text()
+                content = dataset_init.read_text(encoding="utf-8")
                 # Extract exported class names
                 imports = re.findall(r"(?:from|import)\s+(\w+)", content)
                 classes = re.findall(r"class\s+(\w+)", content)
@@ -1722,7 +1747,7 @@ class AgentDispatcher:
         models_init = workspace / "models" / "__init__.py"
         if models_init.exists():
             try:
-                content = models_init.read_text()
+                content = models_init.read_text(encoding="utf-8")
                 classes = re.findall(r"class\s+(\w+)", content)
                 functions = re.findall(r"def\s+(\w+)", content)
                 if classes or functions:
@@ -1745,7 +1770,7 @@ class AgentDispatcher:
         manifest_path = workspace / "DATASET_MANIFEST.json"
         if manifest_path.exists():
             try:
-                manifest = json.loads(manifest_path.read_text())
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 datasets = manifest.get("datasets", {})
                 total_scenes = 0
                 for ds in (datasets.values() if isinstance(datasets, dict) else datasets):

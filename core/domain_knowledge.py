@@ -215,7 +215,7 @@ class DomainKnowledgeMixin:
             return {}
 
         try:
-            brief_text = brief_path.read_text()
+            brief_text = brief_path.read_text(encoding="utf-8")
             brief_lower = brief_text.lower()
         except Exception:
             return {}
@@ -435,7 +435,7 @@ class DomainKnowledgeMixin:
         try:
             for py_file in models_dir.glob("*.py"):
                 try:
-                    content = py_file.read_text().lower()
+                    content = py_file.read_text(encoding="utf-8").lower()
                     for key, props in self.METHOD_PROPERTIES.items():
                         for pat in props.get("patterns", [key]):
                             if pat in content:
