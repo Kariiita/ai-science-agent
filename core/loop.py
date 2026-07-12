@@ -297,6 +297,19 @@ class ResearchLoop(DomainKnowledgeMixin):
                     # DATASET UNDERSTANDING: First cycle or when manifest missing
                     if self.cycle_count == 1:
                         logger.info("DATASET UNDERSTANDING phase — scanning data/ directory")
+                        # 6-Agent integration: dispatch Data Agent on first cycle to produce
+                        # DATA_REPORT.md + DATASET_MANIFEST.json. Non-fatal on failure.
+                        try:
+                            self.dispatcher.dispatch_worker(
+                                agent_type="data",
+                                task=("Analyze the data/ directory of this project. Write and run "
+                                      "an inspection script (e.g. scripts/_inspect_data.py), then "
+                                      "produce workspace/DATA_REPORT.md and workspace/DATASET_MANIFEST.json "
+                                      "with REAL statistics (counts, shapes, value ranges). Never fabricate."),
+                                tools=self.tools.get_tools_for("data"),
+                            )
+                        except Exception as _e:
+                            logger.warning(f"Data Agent dispatch failed (non-fatal): {_e}")
 
                     # ── ROADMAP INIT (v15): Generate research roadmap on first cycle ──
 
@@ -957,6 +970,22 @@ class ResearchLoop(DomainKnowledgeMixin):
             result = {"milestone": "", "decision": "Reflect failed", "dead_end": None,
                       "active_problem": None}
 
+        # 6-Agent integration: dispatch Reflection Agent to write a structured cycle
+        # reflection record (workspace/reflections/cycle_{N}.md). Supplements — does not
+        # replace — the Leader's REFLECT decision. Non-fatal on failure.
+        try:
+            self.dispatcher.dispatch_worker(
+                agent_type="reflection",
+                task=(f"Reflect on cycle {self.cycle_count}. "
+                      f"Hypothesis: {(think_result or {}).get('hypothesis', '')[:300]}. "
+                      f"Experiment result: {str(execute_result)[:800]}. "
+                      f"Write workspace/reflections/cycle_{self.cycle_count}.md following your "
+                      f"template and return the structured reflection JSON."),
+                tools=self.tools.get_tools_for("reflection"),
+            )
+        except Exception as _e:
+            logger.warning(f"Reflection Agent dispatch failed (non-fatal): {_e}")
+
         # Reform v21 root-cause fix (see docs): the ORIGINAL comment here blamed
         # REFLECT failure on "the LLM wrote prose instead of JSON". Black-box
         # probing (angle-3) disproved this — GLM returns valid REFLECT JSON
@@ -1420,4 +1449,52 @@ class ResearchLoop(DomainKnowledgeMixin):
 
     # Domain knowledge methods inherited from DomainKnowledgeMixin (see domain_knowledge.py)
     # Includes: _build_domain_knowledge, _build_cross_experiment_insights
+
+
+def main():
+    """CLI entry point for `python -m core.loop`.
+
+    Usage:
+        python -m core.loop --project /path/to/project --gpu 0 --max-cycles 20
+        nohup python -m core.loop --project . --gpu 0 > loop.log 2>&1 &
+    """
+    import argparse
+    import yaml
+
+    parser = argparse.ArgumentParser(
+        description="AutoResearcher autonomous experiment loop (THINK -> EXECUTE -> VERIFY -> REFLECT)"
+    )
+    parser.add_argument("--project", required=True,
+                        help="Project directory (must contain PROJECT_BRIEF.md)")
+    parser.add_argument("--gpu", default=None,
+                        help="GPU id(s), e.g. 0 or 0,1 (sets CUDA_VISIBLE_DEVICES for training)")
+    parser.add_argument("--max-cycles", type=int, default=None,
+                        help="Max cycles (-1 = unlimited). Overrides config agent.max_cycles.")
+    parser.add_argument("--directive", default="",
+                        help="One-shot directive injected into the next THINK phase")
+    args = parser.parse_args()
+
+    project_dir = Path(args.project).resolve()
+    if not (project_dir / "PROJECT_BRIEF.md").exists():
+        raise SystemExit(f"PROJECT_BRIEF.md not found in {project_dir}")
+
+    if args.gpu is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+
+    # Load config from <project>/config.yaml (UTF-8 explicit — Windows safe,
+    # avoids GBK UnicodeDecodeError when config contains non-ASCII comments)
+    config = {}
+    config_path = project_dir / "config.yaml"
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            config = yaml.safe_load(f) or {}
+    if args.max_cycles is not None:
+        config.setdefault("agent", {})["max_cycles"] = args.max_cycles
+
+    loop = ResearchLoop(config=config, project_dir=str(project_dir))
+    loop.run(directive=args.directive)
+
+
+if __name__ == "__main__":
+    main()
 

@@ -1,6 +1,8 @@
 """AutoResearcher Core - Autonomous ML Experiment Agent Framework."""
 
-from .loop import ResearchLoop
+# NOTE: ResearchLoop is intentionally NOT imported here. Importing it would
+# pre-load core.loop into sys.modules, which makes `python -m core.loop` emit
+# a runpy RuntimeWarning. Import it explicitly: `from core.loop import ResearchLoop`.
 from .memory import MemoryManager
 from .monitor import ExperimentMonitor
 from .tools import ToolRegistry
@@ -14,7 +16,7 @@ from .simulation_sandbox import SimulationSandbox
 
 __version__ = "0.4.0"
 __all__ = [
-    "ResearchLoop", "MemoryManager", "ExperimentMonitor",
+    "MemoryManager", "ExperimentMonitor",
     "AgentDispatcher", "ToolRegistry",
     "ExperimentVerifier", "VerifyReport", "VerifyCheck",
     "ToolTrace", "ToolCallRecord",

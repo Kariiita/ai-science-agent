@@ -284,7 +284,7 @@ TOKEN_PLAN_FAILOVER_ORDER = ["dashscope", "glm_token_plan", "ali_token_plan"]
 
 # Tasks that require the strong model (complex reasoning / planning).
 # Everything else uses the fast model.
-STRONG_MODEL_TASKS = {"think", "reflect", "idea", "researcher", "code"}
+STRONG_MODEL_TASKS = {"think", "reflect", "idea", "researcher", "code", "data", "reflection"}
 
 # Exploration-only tools that a code agent is blocked from calling once it
 # passes 60% of its turn budget (Phase 2 convergence gate). Tools NOT in this
@@ -472,6 +472,14 @@ class AgentDispatcher:
         "researcher": {
             "prompt_file": "researcher_agent.md",
             "max_turns": 30,
+        },
+        "data": {
+            "prompt_file": "data_agent.md",
+            "max_turns": 20,
+        },
+        "reflection": {
+            "prompt_file": "reflection_agent.md",
+            "max_turns": 15,
         },
     }
 
@@ -1189,8 +1197,9 @@ class AgentDispatcher:
                         # failover can kick in. 120s = generous for thinking mode
                         # (normal calls take 10-30s), but bounded.
                         _LLM_WALL_CLOCK = 120
-                        signal.signal(signal.SIGALRM, _llm_timeout_handler)
-                        signal.alarm(_LLM_WALL_CLOCK)
+                        if hasattr(signal, "SIGALRM"):  # Unix-only; Windows skips (socket timeout still guards)
+                            signal.signal(signal.SIGALRM, _llm_timeout_handler)
+                            signal.alarm(_LLM_WALL_CLOCK)
                         response_stream = client.chat.completions.create(**create_kwargs)
                         reasoning_parts = []
                         content_parts = []
@@ -1245,9 +1254,11 @@ class AgentDispatcher:
                                 fr = getattr(chunk.choices[0], "finish_reason", None)
                                 if fr:
                                     finish_reason = fr
-                            signal.alarm(0)  # cancel wall-clock timer — stream completed
+                            if hasattr(signal, "SIGALRM"):
+                                signal.alarm(0)  # cancel wall-clock timer — stream completed
                         except _LLMCallTimeout:
-                            signal.alarm(0)
+                            if hasattr(signal, "SIGALRM"):
+                                signal.alarm(0)
                             partial_content = "".join(content_parts)
                             logger.warning(
                                 f"GLM stream hung >{_LLM_WALL_CLOCK}s (wall-clock timeout). "
@@ -1255,7 +1266,8 @@ class AgentDispatcher:
                             )
                             raise  # Re-raise for failover
                         except Exception as stream_err:
-                            signal.alarm(0)
+                            if hasattr(signal, "SIGALRM"):
+                                signal.alarm(0)
                             partial_content = "".join(content_parts)
                             logger.warning(
                                 f"GLM stream interrupted: {stream_err}. "

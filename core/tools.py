@@ -132,6 +132,8 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 self._tool_code_review,
             ],
             "writing": [self._tool_write_file, self._tool_read_file, self._tool_list_files],
+            "data": [self._tool_write_file, self._tool_read_file, self._tool_list_files, self._tool_run_shell, self._tool_analyze_model],
+            "reflection": [self._tool_read_file, self._tool_list_files, self._tool_write_file, self._tool_query_memory],
         }
         return tool_map.get(agent_type, [])
 
@@ -663,6 +665,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 validated_cmd,
                 capture_output=True,
                 text=True,
+                errors="replace",  # Windows: cmd/dir output is GBK; under PYTHONUTF8=1 avoid UTF-8 decode crash
                 timeout=timeout,
                 shell=True,
                 cwd=str(self.workspace),
@@ -728,6 +731,7 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 [sys.executable, "-c", wrapped],
                 capture_output=True,
                 text=True,
+                errors="replace",  # Windows: avoid UTF-8 decode crash on localized output
                 timeout=timeout,
                 cwd=str(self.workspace),
             )
@@ -809,12 +813,8 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(log_path, "w", encoding="utf-8") as f:
-            # Windows: CREATE_NEW_PROCESS_GROUP + CREATE_NO_WINDOW detaches
-            # the child from the parent console so stray console events
-            # do not kill the training process.
-            # Linux/Mac: start_new_session=True for the same isolation.
-            import sys as _sys
-            popen_kwargs = dict(
+            proc = subprocess.Popen(
+                validated_cmd,
                 stdout=f,
                 stderr=subprocess.STDOUT,
                 env=env,
