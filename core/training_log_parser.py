@@ -21,7 +21,7 @@ _LOSS_RE = re.compile(r"loss[=:\s]+([0-9.]+)", re.IGNORECASE)
 _LOSS_NAN_RE = re.compile(r"loss[=:\s]+(nan|inf)", re.IGNORECASE)
 # Common metric patterns: val_MAE=0.25, MAE_overall: 0.31, rmse 0.12
 _METRIC_RE = re.compile(
-    r"(val_[A-Za-z_]+|MAE[A-Za-z_]*|rmse|mse|psnr|accuracy|acc)[=:\s]+([0-9.]+)",
+    r"(val_[A-Za-z0-9_]+|MAE[A-Za-z0-9_]*|rmse|mse|psnr|accuracy|acc)[=:\s]+([0-9.]+)",
     re.IGNORECASE,
 )
 

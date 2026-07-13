@@ -214,6 +214,15 @@ class ResearchLoop(DomainKnowledgeMixin):
         root = logging.getLogger()
         root.setLevel(logging.INFO)  # must set root level — default WARNING filters INFO before handler
         root.addHandler(file_handler)
+
+        # Also add console (stdout) handler so user can see progress in terminal
+        import sys as _sys
+        has_stream = any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in root.handlers)
+        if not has_stream:
+            console = logging.StreamHandler(_sys.stdout)
+            console.setLevel(logging.INFO)
+            console.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+            root.addHandler(console)
         logger.info(f"File logging enabled: {log_path}")
 
     def run(self, directive: str = ""):
@@ -251,7 +260,16 @@ class ResearchLoop(DomainKnowledgeMixin):
                 # Keep leader context bounded to one cycle.
                 self.dispatcher.reset_leader_history()
 
-                # Check for human directive
+                # Check for human directive (from parameter or DIRECTIVE.md file)
+                if not directive:
+                    _directive_file = self.workspace / "DIRECTIVE.md"
+                    if _directive_file.exists():
+                        try:
+                            directive = _directive_file.read_text(encoding="utf-8").strip()
+                            if directive:
+                                logger.info(f"Loaded directive from DIRECTIVE.md")
+                        except Exception:
+                            pass
                 self._update_state(
                     {
                         "cycle": self.cycle_count,
@@ -679,6 +697,13 @@ class ResearchLoop(DomainKnowledgeMixin):
         # (referee tells player what's wrong, player decides what to do)
         if directive and "PRE-VERIFY" in str(directive):
             context["pre_verify_warning"] = directive
+
+        # Inject human directive (from DIRECTIVE.md or run() parameter)
+        # so the Leader LLM actually sees it and follows it
+        # Key name "directive" matches context_keys.py registry
+        if directive:
+            context["directive"] = directive
+            logger.info("Injected human directive into THINK context")
 
         result = self.dispatcher.dispatch_leader(task="think", context=context)
 

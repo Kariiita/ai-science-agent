@@ -818,10 +818,16 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                 stdout=f,
                 stderr=subprocess.STDOUT,
                 env=env,
-                shell=True,
-                start_new_session=True,
                 cwd=str(self.workspace),
             )
+            if _sys.platform == "win32":
+                popen_kwargs["creationflags"] = (
+                    subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+                )
+            else:
+                popen_kwargs["shell"] = True
+                popen_kwargs["start_new_session"] = True
+            proc = subprocess.Popen(validated_cmd, **popen_kwargs)
 
         # Write a structured manifest alongside the log. This is the single
         # source of truth for "an experiment was launched" — replacing the
@@ -1033,10 +1039,71 @@ class ToolRegistry(MCPClientMixin, ModelAnalyzerMixin):
                         return json.dumps(parsed, ensure_ascii=False, indent=2)
             except (json.JSONDecodeError, TypeError):
                 pass
-        return json.dumps({"error": "MCP search returned no results."})
+        # Fallback: search local paper database
+        local_result = self._search_local_papers_db(query, limit, year)
+        if local_result:
+            return local_result
+        return json.dumps({"error": "MCP search returned no results and no local paper database found."})
+
+
+
+    def _search_local_papers_db(self, query: str, limit: int = 10, year: str = None) -> str | None:
+        """Search a local JSON paper database as fallback when MCP is unavailable."""
+        import json as _json
+        from pathlib import Path as _Path
+
+        candidates = [
+            _Path(self.workspace) / 'scripts' / 'depth_papers_db.json',
+            _Path(self.workspace) / 'depth_papers_db.json',
+        ]
+        db_path = None
+        for c in candidates:
+            if c.exists():
+                db_path = c
+                break
+        if not db_path:
+            return None
+
+        try:
+            with open(db_path, encoding='utf-8') as f:
+                papers = _json.load(f)
+        except (OSError, _json.JSONDecodeError):
+            return None
+
+        query_lower = query.lower()
+        keywords = [k.strip() for k in query_lower.split() if len(k.strip()) > 2]
+        scored = []
+        for paper in papers:
+            text = (
+                paper.get('title', '') + ' ' +
+                paper.get('core_idea', '') + ' ' +
+                paper.get('key_contribution', '') + ' ' +
+                paper.get('relevance', '') + ' ' +
+                ' '.join(paper.get('authors', [])) + ' ' +
+                paper.get('venue', '')
+            ).lower()
+            score = sum(1 for kw in keywords if kw in text)
+            if year and str(paper.get('year', '')) != str(year):
+                score -= 1
+            if score > 0:
+                scored.append((score, paper))
+
+        scored.sort(key=lambda x: -x[0])
+        results = [p for _, p in scored[:limit]]
+        if not results:
+            results = papers[:limit]
+
+        formatted = {
+            'results': results,
+            'source': 'local_db',
+            'total': len(results),
+            'note': 'Results from local paper database (MCP unavailable). Set GLM_CODING_PLAN_API_KEY for live search.',
+        }
+        return _json.dumps(formatted, ensure_ascii=False, indent=2)
 
 
     def _exec_get_paper(self, paper_id: str) -> str:
+
         """Fetch paper details via MCP web_reader."""
         url = None
         if paper_id.startswith("arXiv:"):
